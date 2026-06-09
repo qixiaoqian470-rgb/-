@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>梦中日记本</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- ====== 首页 ====== -->
+    <div id="page-main" class="page">
+      <!-- 顶部导航（参考截图布局） -->
+      <div class="top-bar">
+        <span class="brand-name">🌙 梦中日记本</span>
+        <div class="top-tabs">
+          <span class="tab active">日记</span>
+          <span class="tab">助手</span>
+          <span class="tab">备忘录</span>
+        </div>
+        <span class="menu-icon" id="menu-btn">☰</span>
+      </div>
+
+      <!-- 粒子预览区 -->
+      <div class="particle-area" id="particle-area">
+        <div class="particle-placeholder">
+          <span class="placeholder-icon">⛩️</span>
+          <span class="placeholder-hint">← 滑动切换日记 →</span>
+        </div>
+        <!-- AI 标识 -->
+        <div class="ai-label">
+          <span class="ai-dot"></span>
+          <span>Claude</span>
+        </div>
+        <!-- 滑动指示点 -->
+        <div class="swipe-dots" id="swipe-dots"></div>
+      </div>
+
+      <!-- 底部操作 -->
+      <div class="main-actions">
+        <button class="mic-btn" id="btn-mic">🎤</button>
+        <button class="new-diary-btn" id="btn-new">＋新建日记</button>
+      </div>
+    </div>
+
+    <!-- ====== 日记详情页 ====== -->
+    <div id="page-detail" class="page hidden"></div>
+
+    <!-- ====== 设置页 ====== -->
+    <div id="page-settings" class="page hidden"></div>
+  </div>
+
+  <!-- 菜单弹层 -->
+  <div class="overlay hidden" id="menu-overlay"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

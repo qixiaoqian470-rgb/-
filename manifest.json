@@ -1,0 +1,10 @@
+{
+  "name": "梦中日记本",
+  "short_name": "日记本",
+  "description": "AI 语音日记 — 用声音记录生活",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "icons": []
+}
