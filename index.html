@@ -3,62 +3,508 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>梦中日记本</title>
-  <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/components.css">
+  <title>梦中日记本 · Dream Diary</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['Noto Serif SC', 'Georgia', 'serif'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'SF Mono', 'monospace'],
+          },
+        },
+      },
+    }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="manifest" href="manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --accent: #34D399; --portal-size: min(78vw, 330px); }
+
+    body {
+      background: #000; overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 星空 */
+    .starfield { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    .starfield .star {
+      position: absolute; border-radius: 50%; background: white;
+      animation: twinkle var(--dur) ease-in-out infinite;
+      animation-delay: var(--delay);
+    }
+    @keyframes twinkle {
+      0%,100% { opacity: 0.1; } 50% { opacity: 0.55; }
+    }
+
+    /* 传送门外环 */
+    .portal-outer {
+      width: var(--portal-size); height: var(--portal-size);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(25,15,40,0.4) 0%, transparent 70%);
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 0 40px rgba(180,130,90,0.08), 0 0 90px rgba(90,50,130,0.04);
+      display: flex; align-items: center; justify-content: center; position: relative;
+    }
+
+    .portal-inner {
+      width: calc(var(--portal-size) - 18px);
+      height: calc(var(--portal-size) - 18px);
+      border-radius: 50%; overflow: hidden; position: relative;
+      border: 1px solid rgba(255,255,255,0.08); cursor: pointer;
+    }
+
+    .portal-default-bg {
+      position: absolute; inset: 0; border-radius: 50%;
+      background:
+        radial-gradient(ellipse at 35% 30%, rgba(190,150,110,0.18) 0%, transparent 45%),
+        radial-gradient(ellipse at 65% 60%, rgba(130,90,170,0.12) 0%, transparent 40%),
+        radial-gradient(circle, rgba(15,10,25,0.5) 0%, rgba(0,0,0,0.92) 100%);
+    }
+
+    .portal-vignette {
+      position: absolute; inset: 0; border-radius: 50%; z-index: 2;
+      background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.35) 72%, rgba(0,0,0,0.9) 100%);
+      pointer-events: none;
+    }
+
+    .portal-hint {
+      position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 3;
+      font-size: 11px; color: rgba(255,255,255,0.28); white-space: nowrap;
+      text-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+
+    /* 麦克风脉冲 */
+    .mic-ring {
+      position: absolute; inset: -5px; border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.1);
+      animation: micRing 3s ease-in-out infinite;
+    }
+    .mic-ring.active {
+      border-color: rgba(255,85,85,0.5);
+      animation: micActive 1.5s ease-in-out infinite;
+    }
+    @keyframes micRing {
+      0%,100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.12); opacity: 1; }
+    }
+    @keyframes micActive {
+      0%,100% { transform: scale(1); opacity: 0.6; }
+      50% { transform: scale(1.28); opacity: 1; border-color: rgba(255,70,70,0.8); }
+    }
+
+    /* 卡片弹窗 */
+    .card-modal {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; align-items: flex-end; justify-content: center;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .card-modal.hidden { display: none; }
+
+    .glass-card {
+      background: rgba(22,22,35,0.7);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 12px 56px rgba(0,0,0,0.7), 0 2px 6px rgba(255,255,255,0.02);
+    }
+
+    /* Memory 面板 */
+    .memory-panel {
+      background: rgba(18,18,28,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .fade-up { animation: fadeUp 0.45s ease-out; }
+
+    /* 聊天气泡 */
+    .chat-bubble {
+      max-width: 85%; padding: 10px 14px; border-radius: 16px;
+      font-size: 13px; line-height: 1.7; word-break: break-word;
+    }
+    .chat-bubble.ai {
+      align-self: flex-start; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.65); border-bottom-left-radius: 4px;
+    }
+    .chat-bubble.user {
+      align-self: flex-end; background: rgba(52,211,153,0.12);
+      border: 1px solid rgba(52,211,153,0.2);
+      color: rgba(255,255,255,0.8); border-bottom-right-radius: 4px;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+  </style>
 </head>
-<body>
+<body class="flex justify-center min-h-screen">
 
-  <div id="app">
+  <div class="starfield" id="starfield"></div>
 
-    <!-- ====== 首页 ====== -->
-    <div id="page-main" class="page">
-      <!-- 顶部导航（参考截图布局） -->
-      <div class="top-bar">
-        <span class="brand-name">🌙 梦中日记本</span>
-        <div class="top-tabs">
-          <span class="tab active">日记</span>
-          <span class="tab">助手</span>
-          <span class="tab">备忘录</span>
+  <div id="app" class="w-full max-w-[480px] min-h-screen relative z-10 flex flex-col">
+
+    <!-- ===== 顶部导航 ===== -->
+    <nav class="flex items-center justify-between px-6 pt-5 pb-0 z-20">
+      <span class="font-serif text-[15px] text-white/80 tracking-wide select-none">梦中日记本</span>
+      <div class="flex gap-5 text-[10px] font-light tracking-[3px] uppercase">
+        <span class="text-white/75 font-medium cursor-pointer">日记</span>
+        <span class="text-white/25 hover:text-white/50 cursor-pointer transition-colors">助手</span>
+        <span class="text-white/25 hover:text-white/50 cursor-pointer transition-colors">备忘录</span>
+      </div>
+      <button id="menu-btn" class="text-white/30 hover:text-white/60 text-base">☰</button>
+    </nav>
+
+    <!-- ===== 主区域 ===== -->
+    <main class="flex-1 flex flex-col items-center justify-center relative px-6">
+
+      <!-- Memory 入口 -->
+      <button id="memory-btn"
+        class="absolute top-2 right-6 z-20 flex items-center gap-2 px-4 py-2
+               bg-white/[0.03] border border-white/[0.05] rounded-full
+               text-white/30 hover:text-white/55 transition-all text-xs">
+        <span>📖</span><span>Memory</span>
+        <span id="memory-count" class="text-white/15">0</span>
+      </button>
+
+      <!-- ===== 传送门 ===== -->
+      <div class="portal-outer" id="portal-outer">
+        <div class="portal-inner" id="portal-inner">
+          <div class="portal-default-bg" id="portal-bg"></div>
+          <canvas id="portal-canvas" class="absolute inset-0 w-full h-full rounded-full z-[1]" style="display:none;"></canvas>
+          <div class="portal-vignette"></div>
+          <!-- AI 标签 -->
+          <div class="absolute top-3.5 left-1/2 -translate-x-1/2 z-[3]
+                      flex items-center gap-1.5 bg-black/50 backdrop-blur-md
+                      rounded-2xl px-3 py-1 border border-white/[0.06]
+                      text-[10px] text-white/50">
+            <span class="w-[5px] h-[5px] rounded-full bg-emerald-400 inline-block"></span>
+            <span>Claude</span>
+          </div>
+          <span class="portal-hint" id="portal-hint">点击上传照片</span>
         </div>
-        <span class="menu-icon" id="menu-btn">☰</span>
       </div>
 
-      <!-- 粒子预览区 -->
-      <div class="particle-area" id="particle-area">
-        <div class="particle-placeholder">
-          <span class="placeholder-icon">⛩️</span>
-          <span class="placeholder-hint">← 滑动切换日记 →</span>
-        </div>
-        <!-- AI 标识 -->
-        <div class="ai-label">
-          <span class="ai-dot"></span>
-          <span>Claude</span>
-        </div>
-        <!-- 滑动指示点 -->
-        <div class="swipe-dots" id="swipe-dots"></div>
+      <!-- 录音状态 -->
+      <div id="recording-status" class="hidden flex-col items-center gap-1 mt-3">
+        <span class="font-mono text-2xl font-light text-white tracking-[3px]" id="timer-display">00:00</span>
+        <span class="text-[11px] text-white/25">正在聆听...</span>
       </div>
 
-      <!-- 底部操作 -->
-      <div class="main-actions">
-        <button class="mic-btn" id="btn-mic">🎤</button>
-        <button class="new-diary-btn" id="btn-new">＋新建日记</button>
+    </main>
+
+    <!-- ===== 底部按钮：麦克风在上，上传在下 ===== -->
+    <footer class="flex flex-col items-center gap-3 pb-8 pt-2 z-10">
+      <!-- 麦克风 -->
+      <button id="btn-mic"
+        class="relative w-[66px] h-[66px] rounded-full border border-white/20
+               bg-transparent flex items-center justify-center
+               hover:border-white/35 transition-all cursor-pointer">
+        <span class="mic-ring"></span>
+        <span class="text-2xl relative z-[1]">🎤</span>
+      </button>
+      <!-- 保存日记 -->
+      <button id="btn-save-diary"
+        class="flex items-center gap-2 px-5 py-2.5 rounded-3xl
+               border border-white/[0.08] bg-white/[0.02]
+               text-white/40 hover:text-white/65 transition-all cursor-pointer text-sm">
+        <span>💾</span><span>保存日记</span>
+      </button>
+    </footer>
+
+    <input type="file" accept="image/*" id="file-input" class="hidden">
+
+    <!-- ===== 日记卡片弹窗 ===== -->
+    <div id="card-modal" class="card-modal hidden" onclick="closeCard(event)">
+      <div class="glass-card w-full max-w-[420px] mx-4 mb-6 sm:mb-0 rounded-2xl p-6
+                  max-h-[82vh] overflow-y-auto fade-up"
+           onclick="event.stopPropagation()">
+
+        <!-- AI 标签 -->
+        <div class="flex justify-center mb-4">
+          <span class="flex items-center gap-1.5 bg-white/[0.04] rounded-2xl px-3 py-1
+                       border border-white/[0.05] text-[11px] text-white/50 font-serif">
+            <span class="w-[5px] h-[5px] rounded-full bg-emerald-400"></span>Claude
+          </span>
+        </div>
+
+        <!-- 标题 + 日期元数据 -->
+        <div class="flex justify-between items-start mb-5">
+          <h2 class="font-serif text-lg font-semibold text-white/90 flex-1 pr-3" id="card-title">—</h2>
+          <div class="text-right text-[10px] text-white/30 leading-relaxed whitespace-nowrap" id="card-meta"></div>
+        </div>
+
+        <!-- AI 生成的日记正文 -->
+        <div class="text-[14px] text-white/55 leading-[2] mb-6" id="card-body"></div>
+
+        <!-- 情绪标签 -->
+        <div class="flex gap-2 mb-6 flex-wrap" id="card-tags"></div>
+
+        <!-- 底部三按钮：保存记忆 · 复制 · 关闭 -->
+        <div class="flex justify-center gap-4">
+          <button id="btn-save-memory"
+            class="w-11 h-11 rounded-full bg-emerald-400/15 border border-emerald-400/30
+                   flex items-center justify-center text-base
+                   hover:bg-emerald-400/25 transition-all cursor-pointer"
+            title="保存记忆">↓</button>
+          <button id="btn-copy"
+            class="w-11 h-11 rounded-full border border-white/15
+                   flex items-center justify-center text-base
+                   hover:border-white/30 transition-all cursor-pointer"
+            title="复制">📋</button>
+          <button id="btn-close-card"
+            class="w-11 h-11 rounded-full border border-white/15
+                   flex items-center justify-center text-base
+                   hover:border-white/30 transition-all cursor-pointer"
+            title="关闭">✕</button>
+        </div>
+
+        <!-- ====== AI 聊天区 ====== -->
+        <div class="mt-8 pt-6 border-t border-white/[0.06]">
+          <!-- 聊天标签 -->
+          <div class="flex items-center gap-2 mb-4 text-[11px] text-white/35 font-serif">
+            <span class="w-[4px] h-[4px] rounded-full bg-emerald-400/60 inline-block"></span>
+            <span>Claude · 聊聊这篇日记</span>
+          </div>
+
+          <!-- 消息列表 -->
+          <div id="chat-messages" class="flex flex-col gap-3 mb-4 max-h-[200px] overflow-y-auto">
+            <!-- 聊天气泡动态添加 -->
+          </div>
+
+          <!-- 输入栏 -->
+          <div class="flex items-center gap-2">
+            <input id="chat-input"
+              class="flex-1 bg-white/[0.04] border border-white/[0.06] rounded-2xl px-4 py-2.5
+                     text-sm text-white/70 placeholder-white/20 outline-none
+                     focus:border-white/15 transition-colors font-sans"
+              placeholder="聊聊这篇日记..."
+              autocomplete="off">
+            <button id="btn-send-chat"
+              class="w-9 h-9 rounded-full bg-white/[0.06] border border-white/[0.08]
+                     flex items-center justify-center text-sm
+                     hover:bg-white/12 transition-all flex-shrink-0 cursor-pointer"
+              title="发送">↑</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- ====== 日记详情页 ====== -->
-    <div id="page-detail" class="page hidden"></div>
+    <!-- ===== Memory 面板 ===== -->
+    <div id="memory-panel-overlay" class="card-modal hidden" onclick="closeMemory(event)">
+      <div class="memory-panel w-full max-w-[420px] mx-4 mb-6 sm:mb-0 rounded-2xl p-6
+                  max-h-[65vh] overflow-y-auto fade-up"
+           onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-5">
+          <h3 class="font-serif text-base text-white/80">📖 Memory</h3>
+          <span class="text-xs text-white/25" id="memory-total"></span>
+        </div>
+        <div id="memory-list" class="flex flex-col gap-3"></div>
+      </div>
+    </div>
 
-    <!-- ====== 设置页 ====== -->
-    <div id="page-settings" class="page hidden"></div>
+    <!-- ===== 菜单 ===== -->
+    <div id="menu-overlay" class="card-modal hidden" onclick="closeMenu(event)">
+      <div class="absolute top-14 right-[calc(50%-210px)] bg-zinc-900 rounded-xl p-4
+                  border border-white/[0.06] shadow-2xl min-w-[200px] fade-up"
+           onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center py-2 text-sm text-white/50 cursor-pointer hover:text-white/80">
+          <span>🎵 背景音乐</span><input type="range" class="w-20 accent-emerald-400" min="0" max="100" value="40">
+        </div>
+        <div class="flex justify-between items-center py-2 text-sm text-white/50 cursor-pointer hover:text-white/80 border-t border-white/[0.04]">
+          <span>🔊 音量</span><input type="range" class="w-20 accent-emerald-400" min="0" max="100" value="60">
+        </div>
+        <div class="flex justify-between items-center py-2 text-sm text-white/50 cursor-pointer hover:text-white/80 border-t border-white/[0.04]"
+             onclick="document.getElementById('menu-overlay').classList.add('hidden'); toast('请在第二步接入设置页 ⚙️')">
+          <span>⚙️ 设置</span><span>→</span>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-  <!-- 菜单弹层 -->
-  <div class="overlay hidden" id="menu-overlay"></div>
+  <script>
+    // ===== 星空 =====
+    (() => {
+      const sf = document.getElementById('starfield');
+      for (let i=0;i<80;i++) {
+        const s = document.createElement('div'); s.className='star';
+        s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;--dur:${2+Math.random()*5}s;--delay:${Math.random()*5}s;`;
+        sf.appendChild(s);
+      }
+    })();
 
-  <script type="module" src="js/app.js"></script>
+    // ===== 数据 =====
+    let currentPhoto = null;
+    let currentDiary = null;
+
+    // ===== 菜单 =====
+    document.getElementById('menu-btn').addEventListener('click',()=>document.getElementById('menu-overlay').classList.remove('hidden'));
+    function closeMenu(e){ if(e.target===e.currentTarget) document.getElementById('menu-overlay').classList.add('hidden'); }
+
+    // ===== 上传照片 =====
+    document.getElementById('btn-save-diary').addEventListener('click',()=>{
+      if(!currentDiary){ toast('请先录制语音生成日记 🎤'); return; }
+      const memories=JSON.parse(localStorage.getItem('dream-memories')||'[]');
+      memories.unshift({...currentDiary, id:Date.now().toString()});
+      localStorage.setItem('dream-memories',JSON.stringify(memories.slice(0,50)));
+      updateMemoryCount();
+      toast('日记已保存到 Memory ✓');
+    });
+    document.getElementById('portal-inner').addEventListener('click',(e)=>{
+      if(e.target.tagName==='CANVAS' && currentPhoto){ openCard(); return; }
+      if(!currentPhoto) document.getElementById('file-input').click();
+      else openCard();
+    });
+
+    document.getElementById('file-input').addEventListener('change',function(e){
+      const f=e.target.files[0]; if(!f) return;
+      const r=new FileReader();
+      r.onload=(ev)=>{
+        currentPhoto=ev.target.result;
+        const bg=document.getElementById('portal-bg');
+        if(bg) bg.style.background=`url(${currentPhoto}) center/cover no-repeat, radial-gradient(circle, transparent 45%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0.95) 100%)`;
+        document.getElementById('portal-hint').textContent='拖拽旋转 · 点击查看日记';
+        toast('照片已上传，点击 🎤 说说它吧');
+      };
+      r.readAsDataURL(f);
+    });
+
+    // ===== 麦克风 =====
+    let isRecording=false, timerInterval;
+    document.getElementById('btn-mic').addEventListener('click',function(){
+      if(!currentPhoto){ toast('请先上传一张照片 📷'); return; }
+      isRecording=!isRecording;
+      const ring=this.querySelector('.mic-ring');
+      const status=document.getElementById('recording-status');
+      if(isRecording){ ring.classList.add('active'); status.classList.remove('hidden'); startTimer(); }
+      else { ring.classList.remove('active'); status.classList.add('hidden'); stopTimer(); generateDiary(); }
+    });
+
+    function startTimer(){ let s=0; const el=document.getElementById('timer-display');
+      timerInterval=setInterval(()=>{ s++; el.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+        if(s>=6){ document.getElementById('btn-mic').click(); } },1000); }
+    function stopTimer(){ clearInterval(timerInterval); document.getElementById('timer-display').textContent='00:00'; }
+
+    // ===== 生成日记 =====
+    function generateDiary(){
+      const now=new Date();
+      currentDiary={
+        title:'圣诞树下的独白',
+        date:`${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}/${String(now.getFullYear()).slice(-2)}`,
+        time:`${String(now.getHours()%12||12).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} ${now.getHours()>=12?'PM':'AM'}`,
+        mood:'😊 感动', tags:['温暖','思念','圣诞'],
+        content:'今天把圣诞树立起来了，灯串亮起来的那一刻，房间突然有了温度。我坐在地上，仰头看着那些闪烁的光点，想起小时候也是这样——爸爸扶着树，我踮着脚把星星放到最顶上。\n\n已经好多年没在家里过圣诞了。视频通话能看见彼此，却总感觉少了点什么。大概是他手心的温度，或者妈妈在厨房里烤饼干的焦香。\n\n圣诞老人还会来吗？可能不会了。但挂上袜子的时候，我还是偷偷许了个愿望。',
+        imageData:currentPhoto,
+      };
+      openCard();
+      toast('✨ 日记已生成');
+    }
+
+    // ===== 打开卡片弹窗 =====
+    function openCard(){
+      if(!currentDiary) return;
+      document.getElementById('card-title').textContent=currentDiary.title;
+      document.getElementById('card-meta').innerHTML=`<div>${currentDiary.date}</div><div>${currentDiary.time}</div><div>@Jasmine n CLAUDE</div><div>—</div>`;
+      document.getElementById('card-body').innerHTML=currentDiary.content.split('\n').filter(p=>p.trim()).map(p=>`<p class="mb-2.5">${p}</p>`).join('');
+      document.getElementById('card-tags').innerHTML=(currentDiary.tags||[]).map(t=>`<span class="text-[10px] px-2.5 py-1 rounded-2xl bg-white/[0.05] text-white/45">#${t}</span>`).join('');
+      document.getElementById('card-modal').classList.remove('hidden');
+    }
+
+    function closeCard(e){ if(e.target===e.currentTarget) document.getElementById('card-modal').classList.add('hidden'); }
+
+    // ===== AI 聊天 =====
+    function sendChatMessage(){
+      const input = document.getElementById('chat-input');
+      const msg = input.value.trim();
+      if(!msg) return;
+      input.value = '';
+      addChatBubble('user', msg);
+
+      // 模拟 AI 回复（后续接入 Gemini API）
+      setTimeout(() => {
+        const replies = [
+          '这篇日记写得很温暖呢～那些细小的瞬间，往往是最珍贵的回忆 ✨',
+          '听你说这些的时候，我感觉到一种淡淡的幸福感。谢谢你的分享 💚',
+          '文字像星光一样美。继续记录下去吧，未来的你会感谢现在的自己 🌙',
+          '你说得对，有些感情只有自己才懂。但写下来，就有了形状 🌿',
+        ];
+        addChatBubble('ai', replies[Math.floor(Math.random() * replies.length)]);
+      }, 800 + Math.random() * 1200);
+    }
+
+    function addChatBubble(role, text){
+      const container = document.getElementById('chat-messages');
+      if(!container) return;
+      const div = document.createElement('div');
+      div.className = `chat-bubble ${role}`;
+      div.textContent = text;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    document.getElementById('btn-send-chat').addEventListener('click', sendChatMessage);
+    document.getElementById('chat-input').addEventListener('keypress', (e) => {
+      if(e.key === 'Enter') sendChatMessage();
+    });
+
+    // ===== 卡片底部按钮 =====
+    document.getElementById('btn-close-card').addEventListener('click',()=>document.getElementById('card-modal').classList.add('hidden'));
+    document.getElementById('btn-copy').addEventListener('click',()=>{
+      if(!currentDiary) return;
+      navigator.clipboard.writeText(`${currentDiary.title}\n\n${currentDiary.content}`).then(()=>toast('已复制到剪贴板 ✓'));
+    });
+    document.getElementById('btn-save-memory').addEventListener('click',()=>{
+      if(!currentDiary) return;
+      const memories=JSON.parse(localStorage.getItem('dream-memories')||'[]');
+      memories.unshift({...currentDiary, id:Date.now().toString()});
+      localStorage.setItem('dream-memories',JSON.stringify(memories.slice(0,50)));
+      updateMemoryCount();
+      toast('已保存到 Memory ✓');
+    });
+
+    // ===== Memory =====
+    function updateMemoryCount(){
+      const m=JSON.parse(localStorage.getItem('dream-memories')||'[]');
+      document.getElementById('memory-count').textContent=m.length;
+    }
+    document.getElementById('memory-btn').addEventListener('click',()=>{
+      const memories=JSON.parse(localStorage.getItem('dream-memories')||'[]');
+      document.getElementById('memory-total').textContent=`共 ${memories.length} 篇`;
+      const list=document.getElementById('memory-list');
+      if(!memories.length) list.innerHTML='<p class="text-white/25 text-sm text-center py-8">还没有日记，去创建第一篇吧 ✨</p>';
+      else list.innerHTML=memories.map((m,i)=>`
+        <div class="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] hover:bg-white/[0.06] cursor-pointer transition-all"
+             onclick="event.stopPropagation();(function(d){currentDiary=d;openCard();document.getElementById('memory-panel-overlay').classList.add('hidden');})(JSON.parse('${JSON.stringify(m).replace(/'/g,"\\'")}'))">
+          <div class="text-lg flex-shrink-0">📔</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm text-white/75 font-serif truncate">${m.title}</div>
+            <div class="text-[10px] text-white/30">${m.date}</div>
+          </div>
+          <span class="text-white/15 text-xs">${m.mood}</span>
+        </div>
+      `).join('');
+      document.getElementById('memory-panel-overlay').classList.remove('hidden');
+    });
+    function closeMemory(e){ if(e.target===e.currentTarget) document.getElementById('memory-panel-overlay').classList.add('hidden'); }
+
+    // ===== 工具 =====
+    function toast(msg){
+      const el=document.createElement('div');
+      el.className='fixed top-20 left-1/2 -translate-x-1/2 z-[100] bg-white/10 backdrop-blur-lg text-white/80 text-sm px-5 py-2.5 rounded-2xl border border-white/10';
+      el.style.animation='fadeUp 0.3s ease-out';
+      el.textContent=msg; document.body.appendChild(el);
+      setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity 0.4s';setTimeout(()=>el.remove(),400);},2000);
+    }
+    updateMemoryCount();
+  </script>
 </body>
 </html>
